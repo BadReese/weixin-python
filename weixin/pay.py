@@ -248,6 +248,40 @@ class WeixinPay(object):
         data.setdefault('check_name', 'NO_CHECK')
         return self._fetch_pay(url, data, True)
 
+    def pay_red_package(self, **data):
+        """
+        企业发放现金红包
+        """
+        url = "https://api.mch.weixin.qq.com/mmpaymkttransfers/sendredpack"
+        if not self.key or not self.cert:
+            raise WeixinPayError("企业接口需要双向证书")
+
+        if "mch_billno" not in data:
+            raise WeixinPayError("企业付款接口中, 缺少必要的参数mch_billno")
+        if "re_openid" not in data:
+            raise WeixinPayError("企业付款接口中，缺少必填参数openid")
+        # if "amount" not in data:
+        #     raise WeixinPayError("企业付款接口中，缺少必填参数amount")
+        # if "desc" not in data:
+        #     raise WeixinPayError("企业付款接口中，缺少必填参数desc")
+        # data.setdefault('check_name', 'NO_CHECK')
+
+        # data.setdefault("mch_appid", self.app_id)
+        # data.setdefault("mchid", self.mch_id)
+        data.setdefault("nonce_str", self.nonce_str)
+        data.setdefault("sign", self.sign(data))
+        resp = self.sess.post(url, data=self.to_xml(data), cert=(self.cert, self.key))
+        content = resp.content.decode("utf-8")
+        if "return_code" in content:
+            data = Map(self.to_dict(content))
+            if data.return_code == FAIL:
+                raise WeixinPayError(data.return_msg)
+            if "result_code" in content and data.result_code == FAIL:
+                raise WeixinPayError(data.err_code_des)
+            return data
+        return content
+        # return self._fetch_pay(url, data, True)
+
     def pay_individual_to_card(self, **data):
         """企业付款到银行卡"""
         url = 'https://api.mch.weixin.qq.com/mmpaysptrans/pay_bank'
